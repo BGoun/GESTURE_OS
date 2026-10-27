@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0d16">
+  <title>GESTURE OS — Hand Gesture Control</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js" crossorigin="anonymous"></script>
+  <script type="module">
+    import * as vision from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+    window.vision = vision;
+    window.dispatchEvent(new Event("mediapipe-ready"));
+  </script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="GESTURE OS 홈"><span class="brand-mark">G</span><span>GESTURE<span class="brand-light"> OS</span><small>HAND INTERACTION SYSTEM</small></span></a>
+    <div class="top-status"><span class="status-dot" id="statusDot"></span><span id="systemStatus">카메라 연결 전</span></div>
+    <button class="icon-button" id="settingsButton" title="설정" aria-label="설정">⚙</button>
+  </header>
+
+  <main class="layout">
+    <section class="hero">
+      <div class="eyebrow"><span class="eyebrow-line"></span> HUMAN · COMPUTER · INTERACTION</div>
+      <h1>손끝으로<br><span>세상을 조작하다.</span></h1>
+      <p class="hero-copy">카메라 앞에서 손동작을 해보세요. 손을 추적하고 제스처로 인터페이스를 제어합니다.</p>
+      <div class="hero-actions">
+        <button class="primary-button" id="startButton"><span>◉</span> 카메라 시작</button>
+        <button class="secondary-button" id="loadModelButton">AI 모델 불러오기</button>
+        <button class="secondary-button" id="stopButton" disabled>연결 종료</button>
+      </div>
+      <p class="permission-note"><span>▣</span> 카메라 영상은 이 브라우저에서 처리됩니다. 카메라 권한이 필요합니다.</p>
+    </section>
+
+    <section class="control-panel panel">
+      <div class="panel-heading"><div><span class="section-kicker">LIVE INTERACTION</span><h2>제스처 콘솔</h2></div><span class="live-pill"><i></i> LIVE</span></div>
+      <div class="recognition-box">
+        <div class="recognition-icon" id="gestureIcon">⌁</div>
+        <div class="recognition-text"><span>인식된 동작</span><strong id="gestureName">대기 중</strong><small id="gestureHint">카메라를 시작해 주세요.</small></div>
+        <div class="confidence"><strong id="confidenceValue">--</strong><span>신뢰도</span></div>
+      </div>
+      <div class="tracking-row"><span>손 추적 상태</span><strong id="trackingStatus">비활성</strong></div>
+      <div class="tracking-bar"><span id="trackingBar"></span></div>
+      <div class="section-subhead"><span>GESTURE MAP</span><span>기본 제어</span></div>
+      <div class="gesture-list">
+        <div class="gesture-row"><span class="gesture-symbol">✋</span><span><b>손바닥 펼치기</b><small>메인 메뉴 열기 / 닫기</small></span><kbd>MENU</kbd></div>
+        <div class="gesture-row"><span class="gesture-symbol">✊</span><span><b>주먹 쥐기</b><small>선택 항목 실행</small></span><kbd>SELECT</kbd></div>
+        <div class="gesture-row"><span class="gesture-symbol">☝</span><span><b>검지 들기</b><small>포인터 모드</small></span><kbd>POINT</kbd></div>
+        <div class="gesture-row"><span class="gesture-symbol">✌</span><span><b>브이 표시</b><small>빠른 설정 열기</small></span><kbd>QUICK</kbd></div>
+        <div class="gesture-row"><span class="gesture-symbol">👍</span><span><b>엄지 올리기</b><small>뒤로 가기</small></span><kbd>BACK</kbd></div>
+      </div>
+      <p class="small-note">손동작은 안정적으로 감지된 뒤 실행됩니다. 주먹을 계속 쥐고 있어도 반복 실행되지 않도록 처리합니다.</p>
+    </section>
+
+    <section class="apps-section">
+      <div class="section-title"><div><span class="section-kicker">YOUR GESTURE SPACE</span><h2>앱 런처</h2></div><span class="section-description">메뉴를 열고 손으로 항목을 가리킨 뒤 주먹을 쥐세요.</span></div>
+      <div class="app-grid" id="appGrid">
+        <button class="app-card selected" data-app="media"><span class="app-icon purple">♫</span><span><b>미디어 센터</b><small>미디어 제어 패널</small></span><span class="card-arrow">↗</span></button>
+        <button class="app-card" data-app="games"><span class="app-icon blue">◈</span><span><b>미니게임</b><small>제스처 게임 허브</small></span><span class="card-arrow">↗</span></button>
+        <button class="app-card" data-app="effects"><span class="app-icon pink">✧</span><span><b>화면 효과</b><small>인터랙티브 파티클</small></span><span class="card-arrow">↗</span></button>
+        <button class="app-card" data-app="settings"><span class="app-icon green">⌘</span><span><b>환경 설정</b><small>추적 및 입력 옵션</small></span><span class="card-arrow">↗</span></button>
+      </div>
+    </section>
+
+    <section class="activity-panel panel">
+      <div class="panel-heading"><div><span class="section-kicker">SYSTEM FEEDBACK</span><h2>활동 기록</h2></div><button class="text-button" id="clearLog">기록 지우기</button></div>
+      <div class="activity-log" id="activityLog"><div class="empty-log">아직 기록이 없습니다. 카메라를 시작하고 손동작을 해보세요.</div></div>
+    </section>
+  </main>
+
+  <aside class="webcam-card" id="webcamCard">
+    <div class="webcam-heading"><span><i class="status-dot mini" id="cameraDot"></i> WEBCAM PREVIEW</span><button id="minimizeCamera" aria-label="웹캠 미리보기 최소화">−</button></div>
+    <div class="video-wrap" id="videoWrap">
+      <video id="webcam" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="camera-placeholder" id="cameraPlaceholder"><span>◉</span><b>카메라 대기 중</b><small>시작 버튼을 눌러 연결하세요</small></div>
+      <div class="camera-corner top-left"></div><div class="camera-corner top-right"></div><div class="camera-corner bottom-left"></div><div class="camera-corner bottom-right"></div>
+    </div>
+    <div class="webcam-footer"><span id="cameraResolution">해상도 --</span><span><i class="status-dot"></i> 로컬 처리</span></div>
+  </aside>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <dialog id="appDialog" class="app-dialog">
+    <form method="dialog"><button class="dialog-close" aria-label="닫기">×</button></form>
+    <span class="section-kicker" id="dialogKicker">GESTURE APP</span>
+    <h2 id="dialogTitle">미디어 센터</h2>
+    <p id="dialogDescription">이 앱은 기본 UI 데모입니다. 브라우저에서 재생 가능한 미디어를 연결하는 기능은 별도로 추가할 수 있습니다.</p>
+    <div id="dialogContent" class="dialog-content"></div>
+    <button class="primary-button dialog-ok" id="dialogOk">확인</button>
+  </dialog>
+
+  <dialog id="settingsDialog" class="app-dialog settings-dialog">
+    <form method="dialog"><button class="dialog-close" aria-label="닫기">×</button></form>
+    <span class="section-kicker">SYSTEM PREFERENCES</span><h2>환경 설정</h2>
+    <label class="setting-line"><span><b>좌우 반전</b><small>미리보기를 거울처럼 표시</small></span><input type="checkbox" id="mirrorToggle" checked></label>
+    <label class="setting-line"><span><b>손 추적 민감도</b><small>손동작을 실행하기 위한 신뢰도 기준</small></span><input type="range" id="sensitivity" min="40" max="90" value="65"></label>
+    <label class="setting-line"><span><b>웹캠 미리보기</b><small>오른쪽 아래 창 표시</small></span><input type="checkbox" id="cameraToggle" checked></label>
+    <button class="primary-button dialog-ok" id="saveSettings">설정 적용</button>
+  </dialog>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
